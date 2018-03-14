@@ -61,8 +61,8 @@ public class ShelterService {
 				.stream().map(ShelterResponse::new).collect(Collectors.toList()));
 	}
 
-	@GetMapping(name = "/")
-	public ShelterPageResponse getSheltersByBoundingbox(@RequestParam double latitude,
+	@GetMapping("")
+	public ShelterPageResponse getSheltersByCenterPoint(@RequestParam double latitude,
 			@RequestParam double longitude,
 			@RequestParam(name ="distance", defaultValue = "2.0") double distance,
 			@RequestParam(name ="page", defaultValue = "0") int page,
@@ -79,6 +79,8 @@ public class ShelterService {
 				northWestPoint.getLongitude(),
 				southEastPoint.getLatitude(),
 				southEastPoint.getLongitude(),
+				latitude,
+				longitude,
 				pageRequest);
 
 		if(detailed) {
@@ -89,5 +91,39 @@ public class ShelterService {
 				.stream().map(ShelterResponse::new).collect(Collectors.toList()));
 	}
 
+	@GetMapping("/box")
+	public ShelterPageResponse getSheltersByBoundingbox(@RequestParam double northWestLatitude,
+			@RequestParam double northWestLongitude,
+			@RequestParam double southEastLatitude,
+			@RequestParam double southEastLongitude,
+			@RequestParam(name ="page", defaultValue = "0") int page,
+			@RequestParam(name ="detailed", defaultValue = "false") boolean detailed) {
+		if(northWestLatitude < southEastLatitude) {
+			throw new BadRequestException("South (east) latitude needs to be lower than the north (west) one");
+		} else if(southEastLongitude < northWestLongitude) {
+			throw new BadRequestException("(North) west longitude needs to be lower than the (south) east one");
+		}
+		
+		int itemCount = detailed ? DETAILED_PAGE_SIZE : PAGE_SIZE;
+		PageRequest pageRequest = PageRequest.of(page, itemCount, Sort.Direction.DESC, SORTING_COLUMN);
+		
+		double centerLatitude = ((northWestLatitude - southEastLatitude) / 2) + southEastLatitude;
+		double centerLongitude = ((southEastLongitude - northWestLongitude) / 2) +  northWestLongitude;
+
+		Page<ShelterEntity> shelterPage = shelterRepository.findSheltersWithinPoints(northWestLatitude,
+				northWestLongitude,
+				southEastLatitude,
+				southEastLongitude,
+				centerLatitude,
+				centerLongitude,
+				pageRequest);
+
+		if(detailed) {
+			return new ShelterPageResponse(shelterPage.getNumber(), shelterPage.getTotalPages(), shelterPage.getContent()
+					.stream().map(DetailedShelterResponse::new).collect(Collectors.toList()));
+		}
+		return new ShelterPageResponse(shelterPage.getNumber(), shelterPage.getTotalPages(), shelterPage.getContent()
+				.stream().map(ShelterResponse::new).collect(Collectors.toList()));
+	}
 
 }

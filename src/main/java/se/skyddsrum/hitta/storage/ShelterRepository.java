@@ -11,6 +11,7 @@ public interface ShelterRepository extends PagingAndSortingRepository<ShelterEnt
 
 	Page<ShelterEntity> findByCity(String city, Pageable pageable);
 
-	@Query("select s from shelters s where latitude < ?1 and latitude > ?3 and longitude > ?2 and longitude < ?4")
-	Page<ShelterEntity> findSheltersWithinPoints(double upperLat, double upperLong, double lowerLat, double lowerLong, Pageable pageable);
+	@Query("select s from shelters s where latitude < ?1 and latitude > ?3 and longitude > ?2 and longitude < ?4 order by "
+			+ "SQRT(ABS((s.latitude - ?5) * (s.latitude - ?5)) + ABS((s.longitude - ?6) * (s.longitude - ?6)))") // Order by basic pythagoras
+	Page<ShelterEntity> findSheltersWithinPoints(double northWestLatitude, double northWestLongitude, double southEastLatitude, double southEastLongitude, double centerLat, double centerLong, Pageable pageable);
 }
